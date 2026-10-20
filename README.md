@@ -1,69 +1,51 @@
 # Nuclear Case API
 
-API REST educativa de casos investigativos sobre tecnologia nuclear, para o Challenge FIAP/Marinha 2026.
+API REST educativa de casos investigativos sobre tecnologia nuclear, desenvolvida para o Challenge FIAP/Marinha 2026.
 
-## Estado atual
+## Tecnologias e requisitos
 
-Base inicial da Sprint 1: aplicação Spring Boot, entidade `CasoInvestigativo`, DTO de entrada validado, H2 e Swagger/OpenAPI. Ainda não existem endpoints de negócio, CRUD, services, repositories de negócio, carga inicial ou tratamento global de exceções. A documentação Swagger pode ser aberta, mas ainda não lista operações de negócio.
-
-## Tecnologias
-
-- Java 21; Maven 3.6.3 ou superior.
+- JDK 21 completo (`java` e `javac`) e Maven 3.6.3 ou superior.
 - Spring Boot 4.1.0, Spring MVC, Spring Data JPA e Bean Validation.
 - H2 em memória, Lombok e Springdoc OpenAPI 3.1.0.
-- Sem autenticação, Spring Security, QueryDSL ou integração Oracle.
 
-## Execução
+Configure `JAVA_HOME` para o JDK 21 e confira `java -version`, `javac -version` e `mvn -version` antes do build.
 
-Use um **JDK 21 completo**, com `java` e `javac`, e Maven instalado. Configure `JAVA_HOME` para esse JDK e confira `java -version`, `javac -version` e `mvn -version`.
+## Executar e testar
 
 ```bash
 mvn clean verify
 mvn spring-boot:run
 ```
 
-Ou execute o JAR gerado:
+Ou, após o build:
 
 ```bash
 java -jar target/nuclear-case-api-0.0.1-SNAPSHOT.jar
 ```
 
-- Swagger: http://localhost:8080/swagger-ui.html
+- Swagger UI: http://localhost:8080/swagger-ui.html
 - OpenAPI JSON: http://localhost:8080/api-docs
-- Porta padrão: 8080; pode ser alterada com a variável `PORT`.
-- `/` não possui endpoint; uma resposta 404 nesse caminho é esperada.
+- Porta padrão: `8080`, configurável pela variável de ambiente `PORT`.
+- O caminho `/` não possui endpoint; retorna 404.
 
-O banco `jdbc:h2:mem:nuclearcase` existe somente durante a execução. Hibernate cria e remove o esquema (`create-drop`); não há persistência após encerrar a JVM nem dados de demonstração carregados. O console H2 está desabilitado e sua dependência específica não foi incluída.
+O H2 está em memória, com esquema criado pelo Hibernate (`create-drop`). Os dados de cada execução são perdidos ao encerrar a JVM. O console H2 está desabilitado. A configuração está em `src/main/resources/application.yaml`.
 
-### Ambiente auditado
+## Funcionalidades
 
-Nesta máquina, o Java padrão é 17. O caminho `/usr/lib/jvm/java-21-openjdk-amd64` contém o runtime 21.0.12, mas não contém `javac`. Existe um JDK Amazon Corretto 25.0.2 completo. A validação local usa esse compilador com `--release 21`, e Maven, testes e aplicação executam no Java 21:
+| Método | Endpoint | Resposta de sucesso |
+| --- | --- | --- |
+| GET | `/api/casos` | 200: lista de casos |
+| GET | `/api/casos/{id}` | 200: caso pelo UUID |
+| GET | `/api/casos/buscar?titulo=alimento` | 200: busca por trecho do título, sem distinguir maiúsculas e minúsculas |
+| POST | `/api/casos` | 201: caso criado e cabeçalho `Location` |
+| PUT | `/api/casos/{id}` | 200: atualização completa, preservando o UUID |
+| DELETE | `/api/casos/{id}` | 204: exclusão, sem corpo |
 
-```bash
-JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 mvn -o -B clean verify \
-  -Dmaven.compiler.fork=true \
-  -Dmaven.compiler.executable=/home/gio/.sdkman/candidates/java/25.0.2-amzn/bin/javac
-```
+Listagem e busca sem resultados retornam `200` com `[]`. O parâmetro `titulo` é obrigatório, não pode estar em branco e aceita até 150 caracteres. Espaços no começo e fim da busca são removidos.
 
-Esse comando é específico desta máquina. O modo `-o` funciona porque as dependências já estão no cache local. Em outra máquina com JDK 21 completo, use os comandos normais acima; não é necessário instalar Java 25.
+Dados inválidos ou UUID malformado retornam `400`; UUID válido inexistente retorna `404`. Os erros usam `application/problem+json` (`ProblemDetail`); erros de validação incluem o mapa `errors` com mensagens por campo. Falhas inesperadas retornam `500` com mensagem genérica.
 
-## Organização
-
-Pacote-base: `br.com.fiap.tds.tdspa.javaadv.nuclearcase`.
-
-| Pacote | Estado e responsabilidade |
-| --- | --- |
-| `domainmodel.entities` | Implementado: entidade JPA |
-| `resources.dtos` | Implementado: contrato de entrada com validações |
-| `infrastructure.configuration` | Implementado: metadados OpenAPI |
-| `datasource.repositories` | Planejado: persistência do CRUD |
-| `services` | Planejado: interface e implementação do serviço |
-| `resources` | Planejado: resource REST |
-| `infrastructure.exceptionHandlers` | Planejado: tratamento global de exceções |
-
-Pacotes futuros não recebem classes vazias apenas para materializar a estrutura. A nomenclatura em camadas segue o `blogBackend` do professor. O DTO é um record Java, e a entidade usa Lombok pontualmente, sem `@Data`.
-
-## Contrato de entrada preparado
+## Contrato de entrada
 
 | Campo | Regra |
 | --- | --- |
@@ -73,20 +55,55 @@ Pacotes futuros não recebem classes vazias apenas para materializar a estrutura
 | `dificuldade` | Inteiro obrigatório, de 1 a 5 |
 | `explicacaoCientifica` | Texto obrigatório, até 2000 caracteres |
 
-O ID é UUID gerado pelo servidor e não pertence ao DTO de entrada. Categoria é texto livre nesta rodada. A validação do DTO está testada diretamente; sua aplicação via HTTP dependerá do futuro resource com `@Valid`.
+POST e PUT recebem os mesmos campos. O ID é UUID gerado pelo servidor; não é enviado no corpo de entrada. A resposta contém `id` e todos os campos de conteúdo.
 
-## Testes
+```bash
+curl -i -X POST http://localhost:8080/api/casos \
+  -H 'Content-Type: application/json' \
+  -d '{"titulo":"Investigação educativa","descricao":"Analise as evidências do caso.","categoria":"ENERGIA","dificuldade":2,"explicacaoCientifica":"Texto educativo em revisão pela equipe."}'
 
-`mvn clean verify` executa testes com servidor em porta aleatória, H2 real e transação de teste revertida ao final:
+curl http://localhost:8080/api/casos
+curl 'http://localhost:8080/api/casos/buscar?titulo=alimento'
+```
 
-- Persistência e leitura JPA, UUID gerado e textos nos limites de tamanho.
-- Entradas válidas nos extremos de dificuldade e 11 cenários inválidos de Bean Validation.
-- Documento OpenAPI, redirecionamento do Swagger, HTML da interface e console H2 indisponível.
+Copie o UUID retornado para consultar, atualizar ou excluir:
 
-Não há testes de CRUD porque ele não foi implementado. Os testes não carregam dados permanentes nem adicionam endpoints auxiliares.
+```bash
+curl http://localhost:8080/api/casos/SEU_UUID
 
-## Próxima etapa
+curl -X PUT http://localhost:8080/api/casos/SEU_UUID \
+  -H 'Content-Type: application/json' \
+  -d '{"titulo":"Investigação revisada","descricao":"Analise novas evidências.","categoria":"ENERGIA","dificuldade":3,"explicacaoCientifica":"Texto educativo revisado pela equipe."}'
 
-Repository com Query Method textual, service, resource CRUD, respostas HTTP, tratamento global de exceções e dados educativos de teste. Docker e Azure ficam para a etapa de DevOps.
+curl -i -X DELETE http://localhost:8080/api/casos/SEU_UUID
+```
 
-As decisões, evidências de execução, limitações do ambiente e pendências de publicação estão em [PENDENCIAS_E_DECISOES.md](PENDENCIAS_E_DECISOES.md).
+## Dados de demonstração
+
+Na inicialização de um banco vazio, `DataLoader` insere três casos: **O alimento irradiado**, **O segredo do diagnóstico** e **O futuro energético**. A carga é transacional e só ocorre quando a tabela está vazia; executar o carregador novamente com registros existentes não duplica os dados. Não há `data.sql` nem outra carga concorrente.
+
+Os textos são exemplos educativos conservadores e devem passar por revisão científica humana antes da apresentação final. Referências de apoio à revisão: [irradiação industrial e de alimentos — IAEA](https://nucleus.iaea.org/sites/diif/Pages/GammaRT.aspx), [medicina nuclear — IAEA](https://gnssn.iaea.org/CSN/Toolbox%20Wiki%20temp/Radiation%20Protection%20of%20Patients.aspx) e [avaliação econômica do ciclo de vida nuclear — IAEA](https://nucleus.iaea.org/sites/connect/MSNpublic/Pages/nct/site/bid/evaluate/economic.html).
+
+## Organização
+
+Pacote-base: `br.com.fiap.tds.tdspa.javaadv.nuclearcase`.
+
+| Pacote | Responsabilidade |
+| --- | --- |
+| `domainmodel.entities` | Entidade JPA `CasoInvestigativo` |
+| `datasource.repositories` | Persistência e Query Method textual |
+| `services` | Interface e implementação, transações e atualização da entidade carregada |
+| `resources` | Resource REST e respostas HTTP |
+| `resources.dtos` | Entrada validada e resposta sem exposição direta da entidade |
+| `infrastructure.exceptionHandlers` | Tratamento global com ProblemDetail |
+| `infrastructure.exceptions` | Exceção de recurso inexistente |
+| `infrastructure.configuration` | Metadados OpenAPI |
+| `infrastructure.runner` | Dados de demonstração |
+
+## Cobertura dos testes
+
+O comando `mvn clean verify` verifica persistência JPA/H2, geração e preservação de UUID, limites do DTO, ciclo CRUD HTTP, busca textual, erros 400/404, documentação OpenAPI, Swagger UI, console H2 desabilitado, carga sem duplicação e mensagem genérica de erro inesperado.
+
+Os testes HTTP sobem o servidor em porta aleatória; o ambiente precisa permitir conexões locais. Os testes de CRUD usam dados próprios e os removem ao final. O teste do tratamento de falha inesperada é direto no handler; não há endpoint artificial que gere falhas.
+
+Não estão incluídos autenticação, Oracle, PATCH, paginação, filtros combinados, Docker ou Azure.
