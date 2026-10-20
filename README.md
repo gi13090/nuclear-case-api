@@ -57,6 +57,8 @@ Dados inválidos ou UUID malformado retornam `400`; UUID válido inexistente ret
 
 POST e PUT recebem os mesmos campos. O ID é UUID gerado pelo servidor; não é enviado no corpo de entrada. A resposta contém `id` e todos os campos de conteúdo.
 
+A dificuldade não aceita números fracionários: enviar `2.7`, por exemplo, retorna `400`, sem truncar o valor nem alterar os dados.
+
 ```bash
 curl -i -X POST http://localhost:8080/api/casos \
   -H 'Content-Type: application/json' \

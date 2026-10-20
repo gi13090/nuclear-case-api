@@ -122,6 +122,29 @@ class CasoInvestigativoCrudTests {
         assertThat(response.body()).doesNotContain("stackTrace");
     }
 
+    @Test
+    void rejectsFractionalDifficultyOnCreateAndUpdateWithoutChangingPersistence() throws Exception {
+        long initialCount = repository.count();
+        String fractional = VALID.replace("\"dificuldade\":2", "\"dificuldade\":2.7");
+        var rejectedCreate = request("POST", "/api/casos", fractional);
+        assertThat(rejectedCreate.statusCode()).isEqualTo(400);
+        assertThat((Integer) JsonPath.read(rejectedCreate.body(), "$.status")).isEqualTo(400);
+        assertThat(repository.count()).isEqualTo(initialCount);
+
+        var created = request("POST", "/api/casos", VALID);
+        assertThat(created.statusCode()).isEqualTo(201);
+        UUID id = UUID.fromString(JsonPath.read(created.body(), "$.id"));
+        try {
+            var rejectedUpdate = request("PUT", "/api/casos/" + id, fractional);
+            assertThat(rejectedUpdate.statusCode()).isEqualTo(400);
+            assertThat((Integer) JsonPath.read(rejectedUpdate.body(), "$.status")).isEqualTo(400);
+            assertThat(repository.findById(id).orElseThrow().getDificuldade()).isEqualTo(2);
+            assertThat(repository.count()).isEqualTo(initialCount + 1);
+        } finally {
+            repository.deleteById(id);
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"{", "{}", "{\"dificuldade\":\"abc\"}"})
     void rejectsMalformedOrIncompleteJson(String json) throws Exception {

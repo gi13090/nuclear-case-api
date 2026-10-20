@@ -1,6 +1,9 @@
 spring:
   application:
     name: nuclear-case-api
+  jackson:
+    deserialization:
+      accept-float-as-int: false
   datasource:
     url: jdbc:h2:mem:nuclearcase;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
