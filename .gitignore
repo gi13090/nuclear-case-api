@@ -10,3 +10,5 @@ logs/
 !.env.example
 *.mv.db
 *.trace.db
+PENDENCIAS_E_DECISOES.md
+.codex-context/
