@@ -13,6 +13,6 @@ public class OpenApiConfiguration {
                 .title("Nuclear Case API")
                 .version("0.0.1")
                 .description("API educativa de casos investigativos sobre tecnologia nuclear. "
-                        + "Base inicial; endpoints de negócio ainda não implementados."));
+                        + "CRUD de casos investigativos educativos."));
     }
 }
