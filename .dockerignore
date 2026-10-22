@@ -1,0 +1,20 @@
+# Somente os arquivos necessários ao build entram no contexto.
+**
+!Dockerfile
+!.dockerignore
+!pom.xml
+!src/
+!src/**
+
+# Não incluir arquivos locais mesmo se forem colocados sob src/.
+**/.git/
+**/.idea/
+**/target/
+**/.codex-context/
+**/PENDENCIAS_E_DECISOES.md
+**/.env
+**/.env.*
+**/*.log
+**/*.pem
+**/*.key
+**/credentials*
