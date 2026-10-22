@@ -108,4 +108,67 @@ O comando `mvn clean verify` verifica persistência JPA/H2, geração e preserva
 
 Os testes HTTP sobem o servidor em porta aleatória; o ambiente precisa permitir conexões locais. Os testes de CRUD usam dados próprios e os removem ao final. O teste do tratamento de falha inesperada é direto no handler; não há endpoint artificial que gere falhas.
 
-Não estão incluídos autenticação, Oracle, PATCH, paginação, filtros combinados, Docker ou Azure.
+## Docker local
+
+É necessário ter Docker funcionando. No Docker Desktop para Linux, confirme o contexto e a conexão antes de começar:
+
+```bash
+docker context show
+docker info
+```
+
+O Dockerfile usa build multi-stage. O estágio de build contém Maven 3.9.11 e JDK Temurin 21; executa `clean verify` com todos os testes. O runtime contém somente JRE Temurin 21 e o JAR da aplicação, executado pelo usuário sem privilégios `10001:10001`.
+
+As bases `maven:3.9.11-eclipse-temurin-21` e `eclipse-temurin:21-jre-jammy` estão fixadas por digest no Dockerfile. Na validação local, o compilador/build usou Java 21.0.9 e o runtime usou Temurin 21.0.12.1; a versão do runtime pode ser conferida com o comando abaixo. Atualizações das bases exigem revisar os digests e validar novamente.
+
+O build não usa JDK, cache Maven ou `target/` do host. A `.dockerignore` permite somente Dockerfile, POM e fontes necessários, excluindo arquivos locais e de ambiente. É necessário acesso ao registry e ao Maven Central na primeira construção.
+
+### Construir e executar
+
+```bash
+docker build --pull --no-cache --progress=plain -t nuclear-case-api:local .
+
+docker run -d --name nuclear-case-local \
+  --memory=512m --cpus=1 \
+  -p 127.0.0.1:8081:8080 \
+  nuclear-case-api:local
+```
+
+Use `8081` somente se estiver livre; escolha outra porta host se necessário. O mapeamento acima mantém a porta 8080 do host disponível para uma aplicação já iniciada na IDE. Não interrompa essa aplicação para testar o contêiner.
+
+Após a inicialização, no navegador, curl ou Postman:
+
+- Casos: http://localhost:8081/api/casos
+- Busca: http://localhost:8081/api/casos/buscar?titulo=alimento
+- Swagger UI: http://localhost:8081/swagger-ui.html
+- OpenAPI: http://localhost:8081/api-docs
+
+Os exemplos curl de CRUD deste README podem ser usados trocando a porta 8080 por 8081.
+
+```bash
+docker logs nuclear-case-local
+docker exec nuclear-case-local java -version
+docker stop --time 30 nuclear-case-local
+docker rm nuclear-case-local
+```
+
+Esses comandos de parada/remoção se aplicam apenas ao contêiner `nuclear-case-local` que você criou. O processo Java recebe SIGTERM diretamente e faz encerramento gracioso. A imagem local fica disponível para execuções seguintes.
+
+A porta interna padrão é 8080. Para alterar com `PORT`, ajuste também o destino do mapeamento; execute este exemplo somente depois de liberar a porta host do contêiner anterior:
+
+```bash
+docker run -d --name nuclear-case-alt \
+  --memory=512m --cpus=1 \
+  -e PORT=8082 -p 127.0.0.1:8082:8082 \
+  nuclear-case-api:local
+
+docker logs nuclear-case-alt
+docker stop --time 30 nuclear-case-alt
+docker rm nuclear-case-alt
+```
+
+O H2 continua em memória: ao parar a JVM e iniciar uma nova instância, os registros criados ou alterados são perdidos e os três casos de demonstração são recarregados. Não há banco externo nem volume de persistência.
+
+A validação local executou 30 testes automatizados dentro do build Docker, 33 verificações no primeiro contêiner e 36 em um novo contêiner, incluindo recriação do H2 e alteração da porta interna via PORT. Isso não substitui o aceite manual do usuário no Postman.
+
+Azure não foi implantada. Não estão incluídos autenticação, Oracle, PATCH, paginação ou filtros combinados.
