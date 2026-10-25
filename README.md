@@ -1,63 +1,111 @@
-# Nuclear Case API
+# Nuclear Case — Descubra o que você não vê
 
-API REST educativa de casos investigativos sobre tecnologia nuclear, desenvolvida para o Challenge FIAP/Marinha 2026.
+**Uma proposta de investigação científica para aproximar as pessoas da tecnologia nuclear.** O Nuclear Case parte de situações do cotidiano — um alimento irradiado, um exame médico, uma decisão sobre energia — para despertar perguntas e contextualizar aplicações, benefícios e limitações dessa tecnologia.
 
-## Tecnologias e requisitos
+Este repositório contém a **API REST de gerenciamento de casos**, desenvolvida para a primeira Sprint do Challenge FIAP/Marinha do Brasil 2026, na disciplina Java Advanced. O backend prepara o conteúdo que poderá alimentar um futuro jogo educativo; **o jogo completo ainda não está implementado**.
 
-- JDK 21 completo (`java` e `javac`) e Maven 3.6.3 ou superior.
-- Spring Boot 4.1.0, Spring MVC, Spring Data JPA e Bean Validation.
-- H2 em memória, Lombok e Springdoc OpenAPI 3.1.0.
+## O desafio e a ideia do produto
 
-Configure `JAVA_HOME` para o JDK 21 e confira `java -version`, `javac -version` e `mvn -version` antes do build.
+O Challenge propõe tornar a tecnologia nuclear mais compreensível, acessível e envolvente para a sociedade. A proposta do Nuclear Case é transformar dúvidas em investigações: apresentar uma situação, permitir a análise de evidências e explicar o raciocínio científico por trás da conclusão.
 
-## Executar e testar
+A jornada abaixo é uma **visão futura do produto**, não um fluxo já disponível nesta API:
 
-```bash
-mvn clean verify
-mvn spring-boot:run
+```mermaid
+flowchart LR
+    A["Conhecer um caso"] --> B["Explorar pistas"]
+    B --> C["Registrar uma conclusão"]
+    C --> D["Receber feedback científico"]
 ```
 
-Ou, após o build:
+### O que funciona nesta Sprint
 
-```bash
-java -jar target/nuclear-case-api-0.0.1-SNAPSHOT.jar
+- Cadastro, listagem, consulta, atualização completa e exclusão de casos investigativos.
+- Pesquisa por trecho do título, sem distinguir maiúsculas e minúsculas.
+- Validação dos dados, respostas de erro padronizadas e documentação interativa.
+- Três casos educativos de demonstração e execução local com Java ou Docker.
+
+O CRUD permite preparar e revisar título, descrição, categoria, dificuldade e explicação científica de cada investigação. Essa é a contribuição concreta da API para o futuro catálogo do aplicativo.
+
+Pistas, perguntas, alternativas, resolução do jogador, progresso e feedback interativo são **evoluções previstas**. Flutter, modelagem Oracle e trabalhos de outras disciplinas são entregas separadas; sua integração com esta API não está comprovada neste repositório. A API usa H2, sem integração Oracle.
+
+## Arquitetura atual
+
+```mermaid
+flowchart LR
+    C["Cliente HTTP: Postman ou Swagger UI"] --> R
+    subgraph API["API Java — execução local ou contêiner Docker"]
+        R["REST Resource"] --> S["Service"]
+        S --> P["Repository Spring Data JPA"]
+        P --> H["H2 em memória"]
+    end
 ```
 
-- Swagger UI: http://localhost:8080/swagger-ui.html
-- OpenAPI JSON: http://localhost:8080/api-docs
-- Porta padrão: `8080`, configurável pela variável de ambiente `PORT`.
-- O caminho `/` não possui endpoint; retorna 404.
+O resource recebe e valida DTOs; o service conduz as operações e transações; o repository realiza a persistência. A atualização carrega a entidade existente e preserva seu UUID. O H2 pertence à execução da aplicação, sem serviço de banco externo.
 
-O H2 está em memória, com esquema criado pelo Hibernate (`create-drop`). Os dados de cada execução são perdidos ao encerrar a JVM. O console H2 está desabilitado. A configuração está em `src/main/resources/application.yaml`.
+**Tecnologias:** Java 21, Spring Boot 4.1.0, Maven, Spring MVC, Spring Data JPA, Bean Validation, Lombok, H2 e Springdoc OpenAPI 3.1.0. Configuração em [application.yaml](src/main/resources/application.yaml).
 
-## Funcionalidades
-
-| Método | Endpoint | Resposta de sucesso |
-| --- | --- | --- |
-| GET | `/api/casos` | 200: lista de casos |
-| GET | `/api/casos/{id}` | 200: caso pelo UUID |
-| GET | `/api/casos/buscar?titulo=alimento` | 200: busca por trecho do título, sem distinguir maiúsculas e minúsculas |
-| POST | `/api/casos` | 201: caso criado e cabeçalho `Location` |
-| PUT | `/api/casos/{id}` | 200: atualização completa, preservando o UUID |
-| DELETE | `/api/casos/{id}` | 204: exclusão, sem corpo |
-
-Listagem e busca sem resultados retornam `200` com `[]`. O parâmetro `titulo` é obrigatório, não pode estar em branco e aceita até 150 caracteres. Espaços no começo e fim da busca são removidos.
-
-Dados inválidos ou UUID malformado retornam `400`; UUID válido inexistente retorna `404`. Os erros usam `application/problem+json` (`ProblemDetail`); erros de validação incluem o mapa `errors` com mensagens por campo. Falhas inesperadas retornam `500` com mensagem genérica.
-
-## Contrato de entrada
-
-| Campo | Regra |
+| Pacote | Responsabilidade |
 | --- | --- |
-| `titulo` | Texto obrigatório, até 150 caracteres |
-| `descricao` | Texto obrigatório, até 1000 caracteres |
-| `categoria` | Texto obrigatório, até 50 caracteres |
-| `dificuldade` | Inteiro obrigatório, de 1 a 5 |
-| `explicacaoCientifica` | Texto obrigatório, até 2000 caracteres |
+| `domainmodel.entities` | Entidade JPA `CasoInvestigativo` |
+| `datasource.repositories` | Persistência e Query Method textual |
+| `services` | Interface e implementação do serviço, transações e verificação de existência |
+| `resources` e `resources.dtos` | Contrato HTTP, entrada validada e DTO de resposta |
+| `infrastructure.exceptionHandlers` e `infrastructure.exceptions` | Tratamento global com `ProblemDetail` |
+| `infrastructure.configuration` e `infrastructure.runner` | OpenAPI e carga de demonstração |
 
-POST e PUT recebem os mesmos campos. O ID é UUID gerado pelo servidor; não é enviado no corpo de entrada. A resposta contém `id` e todos os campos de conteúdo.
+## Modelo de dados
 
-A dificuldade não aceita números fracionários: enviar `2.7`, por exemplo, retorna `400`, sem truncar o valor nem alterar os dados.
+A entidade implementada é [CasoInvestigativo](src/main/java/br/com/fiap/tds/tdspa/javaadv/nuclearcase/domainmodel/entities/CasoInvestigativo.java). O contrato de entrada está em [CasoInvestigativoRequestDTO](src/main/java/br/com/fiap/tds/tdspa/javaadv/nuclearcase/resources/dtos/CasoInvestigativoRequestDTO.java).
+
+| Campo | Tipo Java | Obrigatoriedade e limite |
+| --- | --- | --- |
+| `id` | `UUID` | Gerado pelo servidor; não é enviado no corpo de entrada |
+| `titulo` | `String` | Obrigatório, não pode estar em branco; até 150 caracteres |
+| `descricao` | `String` | Obrigatória, não pode estar em branco; até 1000 caracteres |
+| `categoria` | `String` | Texto obrigatório, não pode estar em branco; até 50 caracteres |
+| `dificuldade` | `Integer` | Obrigatória, de 1 a 5; números fracionários são rejeitados |
+| `explicacaoCientifica` | `String` | Obrigatória, não pode estar em branco; até 2000 caracteres |
+
+POST e PUT recebem os mesmos cinco campos de conteúdo. A resposta acrescenta o UUID. Categoria é texto livre, não um enum. Não existem entidades de pistas ou perguntas nesta implementação.
+
+**Persistência da prova de conceito:** o H2 é mantido em memória, com esquema `create-drop`. Encerrar a JVM perde as alterações; a próxima inicialização carrega novamente os três casos. O console H2 está desabilitado.
+
+## Java Advanced: requisito e evidência
+
+Conferência baseada nas páginas 33–36 do documento oficial **2TDS Agosto — Marinha 2026 — 1º Semestre V2**. A tabela relaciona a implementação aos requisitos; não representa nota concedida.
+
+| Requisito | Evidência no projeto |
+| --- | --- |
+| Solução educativa e coerente com tecnologia nuclear | Proposta investigativa, `CasoInvestigativo` e três exemplos no `DataLoader` |
+| CRUD com Spring Data JPA de pelo menos uma entidade | `CasoInvestigativoRepository`, `CasoInvestigativoServiceImpl` e `CasoInvestigativoResource` |
+| Busca textual por Query Method | `findByTituloContainingIgnoreCase` em [CasoInvestigativoRepository](src/main/java/br/com/fiap/tds/tdspa/javaadv/nuclearcase/datasource/repositories/CasoInvestigativoRepository.java) |
+| Spring Validation | Constraints no DTO e `@Valid` no resource; rejeição de dificuldade fracionária no YAML |
+| Tratamento global de exceções | [GlobalExceptionHandler](src/main/java/br/com/fiap/tds/tdspa/javaadv/nuclearcase/infrastructure/exceptionHandlers/GlobalExceptionHandler.java), com erros 400/404 e resposta genérica 500 |
+| Swagger/OpenAPI: endpoints, parâmetros e respostas | Anotações em [CasoInvestigativoResource](src/main/java/br/com/fiap/tds/tdspa/javaadv/nuclearcase/resources/CasoInvestigativoResource.java) e `/api-docs` |
+| Qualidade e organização | Camadas separadas, DTOs, injeção por construtor e testes em [src/test/java](src/test/java) |
+| Repositório, instruções, configurações e dados de teste | Este README, `.gitignore`, `pom.xml`, YAML e [DataLoader](src/main/java/br/com/fiap/tds/tdspa/javaadv/nuclearcase/infrastructure/runner/DataLoader.java) |
+| Pesquisa e responsabilidade científica | Referências institucionais na seção de casos; revisão editorial humana final pendente |
+
+A rubrica atribui **40 pontos à ideação**, **20 ao modelo de dados**, **10 à pesquisa**, **10 à Validation**, **10 à qualidade do código e boas práticas** e **10 ao Swagger**. As evidências técnicas não substituem a avaliação do professor nem a curadoria científica.
+
+## Contrato REST
+
+URL base local: `http://localhost:8080`. Pelo Docker descrito abaixo, use `http://localhost:8081`.
+
+| Método | Endpoint | Respostas usuais |
+| --- | --- | --- |
+| GET | `/api/casos` | 200 com lista, inclusive `[]` |
+| GET | `/api/casos/{id}` | 200; 400 para UUID inválido; 404 se inexistente |
+| GET | `/api/casos/buscar?titulo=alimento` | 200 com lista; 400 para parâmetro ausente ou inválido |
+| POST | `/api/casos` | 201 com corpo e `Location`; 400 para entrada inválida |
+| PUT | `/api/casos/{id}` | 200 com UUID preservado; 400 para entrada inválida; 404 se inexistente |
+| DELETE | `/api/casos/{id}` | 204 sem corpo; 400 para UUID inválido; 404 se inexistente |
+
+A busca aceita título não vazio de até 150 caracteres, remove espaços nas extremidades e ignora diferenças entre maiúsculas e minúsculas. Busca sem correspondência retorna `200` com `[]`.
+
+Os erros usam `application/problem+json` (`ProblemDetail`); falhas de validação de campos incluem o mapa `errors`. Falhas inesperadas retornam `500` com mensagem genérica, sem expor stack trace na resposta.
+
+### Exemplo de cadastro e consulta
 
 ```bash
 curl -i -X POST http://localhost:8080/api/casos \
@@ -68,7 +116,7 @@ curl http://localhost:8080/api/casos
 curl 'http://localhost:8080/api/casos/buscar?titulo=alimento'
 ```
 
-Copie o UUID retornado para consultar, atualizar ou excluir:
+Copie o `id` retornado e substitua `SEU_UUID` nos comandos seguintes:
 
 ```bash
 curl http://localhost:8080/api/casos/SEU_UUID
@@ -80,50 +128,58 @@ curl -X PUT http://localhost:8080/api/casos/SEU_UUID \
 curl -i -X DELETE http://localhost:8080/api/casos/SEU_UUID
 ```
 
-## Dados de demonstração
+### Exemplos de entrada inválida
 
-Na inicialização de um banco vazio, `DataLoader` insere três casos: **O alimento irradiado**, **O segredo do diagnóstico** e **O futuro energético**. A carga é transacional e só ocorre quando a tabela está vazia; executar o carregador novamente com registros existentes não duplica os dados. Não há `data.sql` nem outra carga concorrente.
+Este JSON enviado por POST ou PUT retorna **400**: `2.7` não é convertido silenciosamente em `2`, nem é gravado. Em PUT, os dados anteriores são preservados.
 
-Os textos são exemplos educativos conservadores e devem passar por revisão científica humana antes da apresentação final. Referências de apoio à revisão: [irradiação industrial e de alimentos — IAEA](https://nucleus.iaea.org/sites/diif/Pages/GammaRT.aspx), [medicina nuclear — IAEA](https://gnssn.iaea.org/CSN/Toolbox%20Wiki%20temp/Radiation%20Protection%20of%20Patients.aspx) e [avaliação econômica do ciclo de vida nuclear — IAEA](https://nucleus.iaea.org/sites/connect/MSNpublic/Pages/nct/site/bid/evaluate/economic.html).
-
-## Organização
-
-Pacote-base: `br.com.fiap.tds.tdspa.javaadv.nuclearcase`.
-
-| Pacote | Responsabilidade |
-| --- | --- |
-| `domainmodel.entities` | Entidade JPA `CasoInvestigativo` |
-| `datasource.repositories` | Persistência e Query Method textual |
-| `services` | Interface e implementação, transações e atualização da entidade carregada |
-| `resources` | Resource REST e respostas HTTP |
-| `resources.dtos` | Entrada validada e resposta sem exposição direta da entidade |
-| `infrastructure.exceptionHandlers` | Tratamento global com ProblemDetail |
-| `infrastructure.exceptions` | Exceção de recurso inexistente |
-| `infrastructure.configuration` | Metadados OpenAPI |
-| `infrastructure.runner` | Dados de demonstração |
-
-## Cobertura dos testes
-
-O comando `mvn clean verify` verifica persistência JPA/H2, geração e preservação de UUID, limites do DTO, ciclo CRUD HTTP, busca textual, erros 400/404, documentação OpenAPI, Swagger UI, console H2 desabilitado, carga sem duplicação e mensagem genérica de erro inesperado.
-
-Os testes HTTP sobem o servidor em porta aleatória; o ambiente precisa permitir conexões locais. Os testes de CRUD usam dados próprios e os removem ao final. O teste do tratamento de falha inesperada é direto no handler; não há endpoint artificial que gere falhas.
-
-## Docker local
-
-É necessário ter Docker funcionando. No Docker Desktop para Linux, confirme o contexto e a conexão antes de começar:
-
-```bash
-docker context show
-docker info
+```json
+{
+  "titulo": "Teste de validação",
+  "descricao": "Verificação de entrada inválida.",
+  "categoria": "ENERGIA",
+  "dificuldade": 2.7,
+  "explicacaoCientifica": "Texto de teste."
+}
 ```
 
-O Dockerfile usa build multi-stage. O estágio de build contém Maven 3.9.11 e JDK Temurin 21; executa `clean verify` com todos os testes. O runtime contém somente JRE Temurin 21 e o JAR da aplicação, executado pelo usuário sem privilégios `10001:10001`.
+Título em branco, dificuldade nula/fora de 1–5 e textos acima dos limites também retornam 400. Um GET em `/api/casos/nao-e-uuid` retorna 400; um UUID válido sem registro retorna 404.
 
-As bases `maven:3.9.11-eclipse-temurin-21` e `eclipse-temurin:21-jre-jammy` estão fixadas por digest no Dockerfile. Na validação local, o compilador/build usou Java 21.0.9 e o runtime usou Temurin 21.0.12.1; a versão do runtime pode ser conferida com o comando abaixo. Atualizações das bases exigem revisar os digests e validar novamente.
+**No Postman:** selecione o método no campo próprio e informe somente a URL, por exemplo `http://localhost:8080/api/casos`. Para POST/PUT, use corpo raw JSON e `Content-Type: application/json`.
 
-O build não usa JDK, cache Maven ou `target/` do host. A `.dockerignore` permite somente Dockerfile, POM e fontes necessários, excluindo arquivos locais e de ambiente. É necessário acesso ao registry e ao Maven Central na primeira construção.
+## Como executar
 
-### Construir e executar
+### Java e Maven
+
+Requisitos: **JDK 21 completo**, com `java` e `javac`, e Maven 3.6.3 ou superior. Configure `JAVA_HOME` e confira `java -version`, `javac -version` e `mvn -version`.
+
+```bash
+mvn clean verify
+mvn spring-boot:run
+```
+
+Ou execute o JAR após o build:
+
+```bash
+java -jar target/nuclear-case-api-0.0.1-SNAPSHOT.jar
+```
+
+- Swagger UI: http://localhost:8080/swagger-ui.html
+- OpenAPI JSON: http://localhost:8080/api-docs
+- `/` não possui endpoint; um 404 nessa URL é esperado.
+
+Se 8080 já estiver ocupada, preserve a aplicação existente e escolha outra porta livre. Em Linux/macOS, por exemplo:
+
+```bash
+PORT=8081 java -jar target/nuclear-case-api-0.0.1-SNAPSHOT.jar
+```
+
+Nesse caso, use 8081 nas URLs. A configuração está no YAML; não é necessário editar o código.
+
+### Docker local
+
+Com Docker instalado e daemon acessível, confira `docker info`. No Docker Desktop para Linux, `desktop-linux` pode ser o contexto adequado; essa configuração é específica do ambiente, não uma obrigação em toda instalação.
+
+O [Dockerfile](Dockerfile) usa Maven 3.9.11/JDK 21 no build e JRE 21 no runtime, com bases fixadas por digest. Executa `clean verify` com todos os testes, sem usar o JDK, cache Maven ou `target/` do host. Na validação de 22/10/2026, o build usou Temurin 21.0.9 e o runtime 21.0.12.1. Alterações nos digests exigem nova validação.
 
 ```bash
 docker build --pull --no-cache --progress=plain -t nuclear-case-api:local .
@@ -134,16 +190,9 @@ docker run -d --name nuclear-case-local \
   nuclear-case-api:local
 ```
 
-Use `8081` somente se estiver livre; escolha outra porta host se necessário. O mapeamento acima mantém a porta 8080 do host disponível para uma aplicação já iniciada na IDE. Não interrompa essa aplicação para testar o contêiner.
+Use 8081 somente se estiver livre. Esse mapeamento preserva a porta 8080 do host; a aplicação escuta na porta interna 8080. A [.dockerignore](.dockerignore) limita o contexto aos arquivos necessários ao build.
 
-Após a inicialização, no navegador, curl ou Postman:
-
-- Casos: http://localhost:8081/api/casos
-- Busca: http://localhost:8081/api/casos/buscar?titulo=alimento
-- Swagger UI: http://localhost:8081/swagger-ui.html
-- OpenAPI: http://localhost:8081/api-docs
-
-Os exemplos curl de CRUD deste README podem ser usados trocando a porta 8080 por 8081.
+Após inicializar: [casos](http://localhost:8081/api/casos), [busca](http://localhost:8081/api/casos/buscar?titulo=alimento), [Swagger](http://localhost:8081/swagger-ui.html) e [OpenAPI](http://localhost:8081/api-docs). Os exemplos curl anteriores podem ser usados trocando a porta para 8081.
 
 ```bash
 docker logs nuclear-case-local
@@ -152,9 +201,9 @@ docker stop --time 30 nuclear-case-local
 docker rm nuclear-case-local
 ```
 
-Esses comandos de parada/remoção se aplicam apenas ao contêiner `nuclear-case-local` que você criou. O processo Java recebe SIGTERM diretamente e faz encerramento gracioso. A imagem local fica disponível para execuções seguintes.
+Pare/remova somente o contêiner que você criou. O runtime usa o usuário sem privilégios `10001:10001`, Java como processo principal e encerramento gracioso por SIGTERM. A imagem local permanece disponível.
 
-A porta interna padrão é 8080. Para alterar com `PORT`, ajuste também o destino do mapeamento; execute este exemplo somente depois de liberar a porta host do contêiner anterior:
+Para alterar também a porta interna com `PORT`, ajuste o mapeamento e escolha uma porta host livre:
 
 ```bash
 docker run -d --name nuclear-case-alt \
@@ -167,8 +216,49 @@ docker stop --time 30 nuclear-case-alt
 docker rm nuclear-case-alt
 ```
 
-O H2 continua em memória: ao parar a JVM e iniciar uma nova instância, os registros criados ou alterados são perdidos e os três casos de demonstração são recarregados. Não há banco externo nem volume de persistência.
+O build precisa de acesso ao registry e ao Maven Central na primeira construção. O H2 continua descartável no contêiner: uma nova JVM restaura os três casos, sem manter alterações da execução anterior. Não há volume de banco nem persistência externa.
 
-A validação local executou 30 testes automatizados dentro do build Docker, 33 verificações no primeiro contêiner e 36 em um novo contêiner, incluindo recriação do H2 e alteração da porta interna via PORT. Isso não substitui o aceite manual do usuário no Postman.
+## Testes e evidências
 
-Azure não foi implantada. Não estão incluídos autenticação, Oracle, PATCH, paginação ou filtros combinados.
+Os testes automatizados estão em [CasoInvestigativoCrudTests](src/test/java/br/com/fiap/tds/tdspa/javaadv/nuclearcase/CasoInvestigativoCrudTests.java) e [NuclearCaseApplicationTests](src/test/java/br/com/fiap/tds/tdspa/javaadv/nuclearcase/NuclearCaseApplicationTests.java). Cobrem JPA/UUID, limites dos DTOs, CRUD HTTP, busca, 400/404, documentação, carga sem duplicação e rejeição de dificuldade fracionária. O teste de resposta genérica 500 é direto no handler, sem endpoint artificial de falha.
+
+| Data | Execução histórica | Resultado |
+| --- | --- | --- |
+| 20/10/2026 | Java: build limpo, auditoria HTTP do JAR com reinício e nova regressão limpa | 30 testes JUnit; 43 verificações HTTP/encerramento; 30 testes JUnit, respectivamente |
+| 22/10/2026 | Docker: build da imagem, primeiro contêiner e novo contêiner limpo | 30 testes JUnit no build; 33 verificações HTTP/infraestrutura; 36 verificações de regressão/infraestrutura |
+| 25/10/2026 | Postman | Aceite dos testes manuais relatado pelo usuário; não é execução produzida pela auditoria automatizada |
+
+As sequências finais registradas passaram sem falhas. **As contagens têm naturezas diferentes e não devem ser somadas como testes automatizados.** São evidências históricas; a revisão deste README não representa reexecução dessas rodadas. Para uma nova validação, execute os comandos de build/teste acima. Os testes HTTP precisam permitir conexões locais e usam porta aleatória.
+
+## Casos e responsabilidade científica
+
+O [DataLoader](src/main/java/br/com/fiap/tds/tdspa/javaadv/nuclearcase/infrastructure/runner/DataLoader.java) insere os três exemplos abaixo quando a tabela está vazia. A carga é transacional, não duplica registros se já houver dados e não concorre com outro mecanismo como `data.sql`.
+
+| Caso implementado | Tema investigativo | Referências institucionais |
+| --- | --- | --- |
+| O alimento irradiado | Diferença entre exposição à radiação e contaminação radioativa | [IAEA — aplicações de instalações gama](https://nucleus.iaea.org/sites/diif/Pages/GammaRT.aspx), [FDA — irradiação de alimentos](https://www.fda.gov/food/buy-store-serve-safe-food/food-irradiation-what-you-need-know) |
+| O segredo do diagnóstico | Radiofármacos e informações sobre o funcionamento de órgãos | [IAEA — proteção de pacientes](https://gnssn.iaea.org/CSN/Toolbox%20Wiki%20temp/Radiation%20Protection%20of%20Patients.aspx), [IAEA — produção e disponibilidade de radiofármacos](https://www.iaea.org/sites/default/files/gc/gc51inf-3-att2_en.pdf) |
+| O futuro energético | Geração nuclear, resíduos, segurança e custos ao longo do ciclo de vida | [IAEA — ciência da energia nuclear](https://www.iaea.org/newscenter/news/what-is-nuclear-energy-the-science-of-nuclear-power), [IAEA — avaliação econômica](https://nucleus.iaea.org/sites/connect/MSNpublic/Pages/nct/site/bid/evaluate/economic.html) |
+
+As fontes apoiam conceitos introdutórios, não uma aprovação científica final dos textos. Os exemplos continuam sujeitos à revisão editorial humana. Irradiação alimentar não deve ser confundida com contaminação; aplicações médicas exigem avaliação profissional de benefícios e riscos. A referência econômica não substitui fontes específicas sobre segurança. O projeto não oferece aconselhamento médico nem afirma ausência universal de riscos.
+
+## Evolução prevista e entregas relacionadas
+
+| Frente | Situação |
+| --- | --- |
+| Java Advanced | CRUD educativo e requisitos técnicos implementados; avaliação acadêmica cabe ao professor |
+| Docker | Build e execução local validados; comandos disponíveis acima |
+| Produto educativo | Pistas, perguntas, alternativas, conclusão do jogador, feedback e progresso são futuros |
+| Mobile e Banco de Dados | Flutter e modelagem Oracle são entregas separadas; integração ainda não demonstrada aqui |
+| Persistência durável | Evolução futura; atualmente H2 em memória |
+| Segurança, IA e gamificação complexa | Não implementadas nesta Sprint |
+
+**DevOps ainda não está concluído.** Conforme as páginas 24–28 da V2, faltam VM provisionada por Azure CLI, contêiner funcionando na VM, script `.sh`, comprovação da exclusão do grupo de recursos, diagrama específico com ícones/serviços, instruções Cloud, vídeo de aproximadamente 3 minutos (mínimo 720p) e PDF final com identificação e links. O diagrama técnico deste README explica o backend; não substitui esse desenho de implantação. Docker local, isoladamente, não atende à entrega Cloud. **Azure não foi implantada.**
+
+## Equipe e entrega
+
+- Nome, RM e turma dos integrantes: **a preencher pela equipe**.
+- Repositório público: [gi13090/nuclear-case-api](https://github.com/gi13090/nuclear-case-api).
+- Links de vídeo e PDF final de DevOps: **pendentes**.
+
+O README documenta a prova de conceito existente. A evolução do jogo, a curadoria científica e as entregas de outras disciplinas precisam ser revisadas pela equipe em seus respectivos escopos.
