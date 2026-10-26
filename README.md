@@ -257,7 +257,13 @@ As fontes apoiam conceitos introdutórios, não uma aprovação científica fina
 
 ## Equipe e entrega
 
-- Nome, RM e turma dos integrantes: **a preencher pela equipe**.
+| Integrante | RM | Turma |
+| --- | --- | --- |
+| Murillo Massini | 567383 | 1TDSPA |
+| Giovanni Sacristan | 567548 | 1TDSPA |
+| Gabriel Deotti Zanatta | 567258 | 1TDSPA |
+| Caique Roberto de Souza Hollo | 568104 | 1TDSPA |
+
 - Repositório público: [gi13090/nuclear-case-api](https://github.com/gi13090/nuclear-case-api).
 - Links de vídeo e PDF final de DevOps: **pendentes**.
 
