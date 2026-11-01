@@ -71,13 +71,25 @@ docker run -d --name nuclear-case-local --memory=512m --cpus=1 -p 127.0.0.1:8081
 
 Use [API](http://localhost:8081/api/casos) e [Swagger](http://localhost:8081/swagger-ui.html) na porta 8081. [Logs, parada, remoção e PORT configurável](docs/DEVOPS.md#docker-local-validado).
 
+## DevOps e Azure
+
+A API foi implantada em 30/10/2026 a partir do commit `d7fefaa`, na VM `vm-nuclear-case`, com Ubuntu Server 22.04 LTS e tamanho `Standard_D2s_v4`, na região `spaincentral`. A infraestrutura inclui VNet, sub-rede, NSG e IP público. O NSG controla o tráfego na sub-rede; o H2 permanece em memória dentro da aplicação.
+
+Docker empacota a API Java 21 e suas dependências; a VM Azure fornece computação e rede para a prova de conceito. Foram demonstrados o build da imagem, o contêiner com `8080:8080`, o GET público de casos e o Swagger. A visualização do Swagger não comprova testes de todos os endpoints na Azure. Consulte as [evidências selecionadas](docs/evidencias/devops/README.md).
+
+Os recursos Azure foram excluídos após a demonstração. O vídeo registra o comando de exclusão e o retorno ao prompt; a captura final da consulta confirmando a ausência do grupo ainda não está disponível.
+
+[Arquitetura em PNG e draw.io](docs/arquitetura/README.md) · [Script Azure](scripts/azure-deploy.sh) · [Guia DevOps](docs/DEVOPS.md) · [Vídeo demonstrativo](https://youtu.be/xHzolGpopnc).
+
+O script foi preparado após a implantação e não foi executado. Ele exige configuração da assinatura e da chave pública, além de confirmação explícita antes de provisionar recursos.
+
 ## Documentação detalhada
 
 | Guia | O que encontrar |
 | --- | --- |
 | [API](docs/API.md) | Modelo, limites, seis operações, erros, exemplos JSON e casos com referências científicas |
 | [Execução e testes](docs/EXECUCAO_E_TESTES.md) | JDK/Maven, JAR, portas, curl, Postman e histórico separado de JUnit/HTTP/aceite manual |
-| [Docker e DevOps](docs/DEVOPS.md) | Build/run/stop, runtime sem privilégios, H2 e checklist Cloud pendente |
+| [Docker e DevOps](docs/DEVOPS.md) | Docker local, implantação Azure, reprodução, segurança e exclusão |
 
 Os números de validação são históricos e estão nos guias, com datas e naturezas distintas; não representam reexecução durante esta edição da documentação.
 
@@ -87,7 +99,7 @@ Os números de validação são históricos e estão nos guias, com datas e natu
 - **Visão futura:** explorar pistas, responder perguntas, receber feedback e acompanhar progresso. Pista, Pergunta e Alternativa não são entidades implementadas.
 - **Entregas separadas:** Flutter e modelagem Oracle; integração com esta API não comprovada.
 - **Ciência:** exemplos introdutórios sujeitos à revisão editorial humana; não são aconselhamento médico nem garantia de ausência de riscos.
-- **DevOps:** Docker local validado; **Azure ainda não implantada**. A prova local não conclui a entrega Cloud.
+- **DevOps:** prova de conceito Azure encerrada, com recursos excluídos; falta a captura final da consulta de confirmação.
 - Segurança/JWT, IA e gamificação complexa não estão implementadas nesta Sprint.
 
 ## Equipe e entrega
@@ -99,4 +111,4 @@ Os números de validação são históricos e estão nos guias, com datas e natu
 | Gabriel Deotti Zanatta | 567258 | 1TDSPA |
 | Caique Roberto de Souza Hollo | 568104 | 1TDSPA |
 
-Repositório público: [gi13090/nuclear-case-api](https://github.com/gi13090/nuclear-case-api). Vídeo e PDF final de DevOps: **pendentes**. A avaliação acadêmica cabe ao professor.
+[Repositório GitHub](https://github.com/gi13090/nuclear-case-api) · [Vídeo DevOps](https://youtu.be/xHzolGpopnc).

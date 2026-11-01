@@ -12,3 +12,18 @@ logs/
 *.trace.db
 PENDENCIAS_E_DECISOES.md
 .codex-context/
+
+# Credenciais e material privado; evidências públicas somente após revisão.
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+.ssh/
+.aws/
+.azure/
+.codex/
+.agents/
+# Artefatos locais preexistentes de outras entregas (preservados).
+/output/
+/tmp/
+/entrega_plsql/
